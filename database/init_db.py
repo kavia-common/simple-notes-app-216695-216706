@@ -50,6 +50,29 @@ cursor.execute("""
     )
 """)
 
+# Notes table (used by the notes app backend) + updated_at maintenance trigger.
+# Idempotent: safe to run multiple times.
+cursor.execute("""
+    CREATE TABLE IF NOT EXISTS notes (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        title TEXT NOT NULL,
+        content TEXT NOT NULL,
+        created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+        updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+    )
+""")
+
+# SQLite doesn't support "ON UPDATE CURRENT_TIMESTAMP" column clauses like MySQL.
+# Use a trigger to keep updated_at current on modifications.
+cursor.execute("""
+    CREATE TRIGGER IF NOT EXISTS notes_set_updated_at
+    AFTER UPDATE ON notes
+    FOR EACH ROW
+    BEGIN
+        UPDATE notes SET updated_at = CURRENT_TIMESTAMP WHERE id = OLD.id;
+    END;
+""")
+
 # Insert initial data
 cursor.execute("INSERT OR REPLACE INTO app_info (key, value) VALUES (?, ?)", 
                ("project_name", "database"))
